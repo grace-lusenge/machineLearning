@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% block titre %}Les données{% endblock %}
+{% block contenu %}
+<section class="hero hero--simple">
+  <div>
+    <p class="surtitre">Le jeu d'entraînement</p>
+    <h1>Les données</h1>
+    <p class="hero__texte">{{ n_total }} étudiants fictifs : {{ n_reussite }} réussites et {{ n_total - n_reussite }} échecs. C'est sur ces exemples que le réseau a appris.</p>
+  </div>
+</section>
+
+<section class="cartes-stats">
+  {% for s in stats %}
+  <article class="carte carte--stat">
+    <h3>{{ s.libelle }}</h3>
+    <p class="carte--stat__plage">de {{ s.min|fr }} à {{ s.max|fr }} {{ s.unite }}</p>
+    <dl>
+      <div><dt>Moyenne</dt><dd>{{ '%.1f'|format(s.moyenne)|replace('.', ',') }}</dd></div>
+      <div><dt class="texte-succes">Réussite</dt><dd>{{ '%.1f'|format(s.reussite)|replace('.', ',') }}</dd></div>
+      <div><dt class="texte-echec">Échec</dt><dd>{{ '%.1f'|format(s.echec)|replace('.', ',') }}</dd></div>
+    </dl>
+  </article>
+  {% endfor %}
+</section>
+
+<div class="grille-2 grille-2--large">
+  <section class="carte">
+    <h2>Étude et sommeil</h2>
+    <div class="graphique">
+      <svg viewBox="-50 -10 {{ L + 70 }} {{ H + 55 }}" role="img" aria-label="Nuage de points : heures d'étude et heures de sommeil, coloré selon la réussite">
+        {% for v in range(4, 12) %}
+          {% set y = H - (v - 4) / 7 * H %}
+          <line x1="0" x2="{{ L }}" y1="{{ y }}" y2="{{ y }}" class="graphique__grille"/>
+          <text x="-10" y="{{ y + 4 }}" text-anchor="end" class="graphique__texte">{{ v }} h</text>
+        {% endfor %}
+        {% for v in range(0, 21, 4) %}
+          <text x="{{ v / 20 * L }}" y="{{ H + 20 }}" text-anchor="middle" class="graphique__texte">{{ v }}</text>
+        {% endfor %}
+        <text x="{{ L / 2 }}" y="{{ H + 42 }}" text-anchor="middle" class="graphique__texte">Heures d'étude par semaine</text>
+        {% for p in points %}
+          <circle cx="{{ '%.1f'|format(p.x) }}" cy="{{ '%.1f'|format(p.y) }}" r="5" class="point point--{{ 'succes' if p.r else 'echec' }}"/>
+        {% endfor %}
+      </svg>
+      <div class="legende">
+        <span><i class="legende__succes"></i>Réussite</span>
+        <span><i class="legende__echec"></i>Échec</span>
+      </div>
+    </div>
+  </section>
+  <section class="carte carte--accent">
+    <h2>Ce que montre ce graphique</h2>
+    <p>Les points verts forment une <strong>bande au milieu</strong>, entre 6 et 9 heures de sommeil. Trop peu <em>ou</em> trop de sommeil mène plus souvent à l'échec.</p>
+    <p>C'est une relation <strong>non linéaire</strong> : la corrélation du sommeil avec la réussite est presque nulle, et pourtant c'est une variable clé. Un modèle linéaire ne la capte pas, le réseau de neurones si.</p>
+    <p class="aide">Essayez sur la page « Prédire » : gardez un profil fixe et faites varier seulement le sommeil.</p>
+  </section>
+</div>
+
+<section class="carte">
+  <div class="carte__entete">
+    <h2>Tous les étudiants</h2>
+    <div class="profils" role="group" aria-label="Filtrer le tableau">
+      <button type="button" class="puce puce--active" data-filtre="tous">Tous</button>
+      <button type="button" class="puce" data-filtre="1">Réussite</button>
+      <button type="button" class="puce" data-filtre="0">Échec</button>
+    </div>
+  </div>
+  <div class="tableau-defilant tableau-defilant--haut">
+    <table class="tableau" id="tableau-donnees">
+      <thead><tr><th>#</th>{% for c in colonnes %}<th><code>{{ c }}</code></th>{% endfor %}<th>reussite</th></tr></thead>
+      <tbody>
+        {% for l in lignes %}
+        <tr data-reussite="{{ l.reussite }}">
+          <td class="discret">{{ loop.index }}</td>
+          {% for c in colonnes %}<td>{{ l[c]|fr }}</td>{% endfor %}
+          <td><span class="badge badge--{{ 'succes' if l.reussite else 'echec' }}">{{ l.reussite }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% endblock %}

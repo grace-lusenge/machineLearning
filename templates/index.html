@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block titre %}Prédire{% endblock %}
+{% block contenu %}
+<section class="hero">
+  <div>
+    <p class="surtitre">Réseau de neurones · Classification binaire</p>
+    <h1>Va-t-il réussir son examen&nbsp;?</h1>
+    <p class="hero__texte">Réglez le profil d'un étudiant : le réseau de neurones calcule sa probabilité de réussite en direct.</p>
+  </div>
+  <ul class="pastilles">
+    <li><strong>{{ '%.1f'|format(metriques.precision * 100)|replace('.', ',') }}&nbsp;%</strong><span>précision sur le test</span></li>
+    <li><strong>{{ metriques.n_train + metriques.n_test }}</strong><span>étudiants dans les données</span></li>
+    <li><strong>49</strong><span>paramètres appris</span></li>
+  </ul>
+</section>
+
+<div class="grille-prediction">
+  <!-- ====================== Formulaire ====================== -->
+  <section class="carte">
+    <div class="carte__entete">
+      <h2>Profil de l'étudiant</h2>
+      <div class="profils" role="group" aria-label="Profils d'exemple">
+        {% for p in profils %}
+        <button type="button" class="puce" data-valeurs="{{ p.valeurs|join(',') }}">{{ p.nom }}</button>
+        {% endfor %}
+      </div>
+    </div>
+
+    {% if erreurs %}
+    <div class="alerte alerte--erreur" role="alert">
+      {% for e in erreurs %}<p>{{ e }}</p>{% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" id="formulaire" novalidate>
+      {% for c in colonnes %}
+      {% set info = caracteristiques[c] %}
+      <div class="champ" data-champ="{{ c }}">
+        <div class="champ__ligne">
+          <label for="{{ c }}" class="champ__libelle">
+            <span class="champ__icone champ__icone--{{ c }}" aria-hidden="true"></span>
+            {{ info.libelle }}
+          </label>
+          <div class="champ__valeur">
+            <input type="number" id="{{ c }}" name="{{ c }}" value="{{ valeurs[c]|round(1) }}"
+                   min="{{ info.min }}" max="{{ info.max }}" step="{{ info.pas }}" inputmode="decimal">
+            <span class="champ__unite">{{ info.unite }}</span>
+          </div>
+        </div>
+        <input type="range" class="curseur" aria-label="{{ info.libelle }}" data-cible="{{ c }}"
+               min="{{ info.min }}" max="{{ info.max }}" step="{{ info.pas }}" value="{{ valeurs[c] }}">
+        <div class="champ__bornes"><span>{{ info.min }}</span><span>{{ info.max }}</span></div>
+      </div>
+      {% endfor %}
+      <button type="submit" class="bouton bouton--principal">Calculer la prédiction</button>
+      <p class="aide">La prédiction se met aussi à jour automatiquement quand vous bougez un curseur.</p>
+    </form>
+  </section>
+
+  <!-- ====================== Résultat ====================== -->
+  <section class="carte resultat {{ 'resultat--' ~ resultat.classe if resultat }}" id="resultat" aria-live="polite">
+    <h2>Prédiction</h2>
+    <div class="jauge">
+      <svg viewBox="0 0 200 200" class="jauge__svg" aria-hidden="true">
+        <circle cx="100" cy="100" r="80" class="jauge__fond"/>
+        <circle cx="100" cy="100" r="80" class="jauge__valeur" id="jauge-arc"
+                stroke-dasharray="502.65" stroke-dashoffset="{{ 502.65 * (1 - (resultat.probabilite if resultat else 0) / 100) }}"/>
+      </svg>
+      <div class="jauge__texte">
+        <span class="jauge__pourcent" id="pourcent">{{ (resultat.probabilite|round|int) if resultat else '–' }}<small>%</small></span>
+        <span class="jauge__legende">de chances de réussir</span>
+      </div>
+    </div>
+    <p class="verdict"><span class="badge" id="niveau">{{ resultat.niveau if resultat else '—' }}</span></p>
+    <p class="resultat__phrase" id="phrase">
+      {% if resultat %}Décision du modèle (seuil 50&nbsp;%) : <strong>{{ resultat.verdict }}</strong>{% endif %}
+    </p>
+
+    <div id="avertissements">
+      {% for a in resultat.avertissements if resultat %}<div class="alerte alerte--info">{{ a }}</div>{% endfor %}
+    </div>
+
+    <div class="conseils">
+      <h3>Ce qui ferait monter la probabilité</h3>
+      <ul id="liste-conseils">
+        {% if resultat and resultat.conseils %}
+          {% for c in resultat.conseils %}
+          <li><span>{{ c.texte }}</span><span class="gain">+{{ c.gain }} pts → {{ c.apres }}&nbsp;%</span></li>
+          {% endfor %}
+        {% else %}
+          <li class="vide">Aucun changement simple n'améliore nettement ce profil.</li>
+        {% endif %}
+      </ul>
+    </div>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% endblock %}

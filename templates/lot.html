@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block titre %}Prédiction en lot{% endblock %}
+{% block contenu %}
+<section class="hero hero--simple">
+  <div>
+    <p class="surtitre">Plusieurs étudiants d'un coup</p>
+    <h1>Prédiction en lot</h1>
+    <p class="hero__texte">Envoyez un fichier CSV contenant plusieurs étudiants : le réseau calcule la probabilité de réussite de chacun.</p>
+  </div>
+</section>
+
+<div class="grille-lot">
+  <section class="carte">
+    <h2>1. Préparez le fichier</h2>
+    <p>Le fichier doit contenir ces 4 colonnes (séparateur virgule ou point-virgule) :</p>
+    <ul class="liste-colonnes">
+      {% for c in colonnes %}<li><code>{{ c }}</code></li>{% endfor %}
+    </ul>
+    <p class="aide">Une colonne <code>nom</code> ou <code>id</code> est facultative. 1&nbsp;000 lignes et 1&nbsp;Mo maximum.</p>
+    <a class="bouton bouton--secondaire" href="{{ url_for('exemple_csv') }}">Télécharger un fichier d'exemple</a>
+  </section>
+
+  <section class="carte">
+    <h2>2. Envoyez-le</h2>
+    <form method="post" enctype="multipart/form-data" class="depot" id="form-lot">
+      <label class="depot__zone" for="fichier" id="zone-depot">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0l-4 4m4-4l4 4M4 16v3a1 1 0 001 1h14a1 1 0 001-1v-3" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="depot__titre" id="nom-fichier">{{ nom_fichier or 'Cliquez ou glissez un fichier CSV ici' }}</span>
+        <span class="aide">Format .csv</span>
+        <input type="file" id="fichier" name="fichier" accept=".csv,text/csv">
+      </label>
+      <button type="submit" class="bouton bouton--principal">Lancer les prédictions</button>
+    </form>
+  </section>
+</div>
+
+{% if erreurs %}
+<div class="alerte alerte--erreur" role="alert">
+  {% for e in erreurs %}<p>{{ e }}</p>{% endfor %}
+</div>
+{% endif %}
+
+{% if resultats %}
+<section class="carte">
+  <div class="carte__entete">
+    <h2>Résultats{% if nom_fichier %} · <span class="discret">{{ nom_fichier }}</span>{% endif %}</h2>
+    <button type="button" class="bouton bouton--secondaire" id="telecharger">Télécharger les résultats (CSV)</button>
+  </div>
+  <ul class="resume">
+    <li><strong>{{ resume.total }}</strong><span>étudiants</span></li>
+    <li class="resume--succes"><strong>{{ resume.reussite }}</strong><span>réussite prédite</span></li>
+    <li class="resume--echec"><strong>{{ resume.echec }}</strong><span>échec prédit</span></li>
+    <li><strong>{{ resume.moyenne|fr }}&nbsp;%</strong><span>probabilité moyenne</span></li>
+  </ul>
+  <div class="tableau-defilant">
+    <table class="tableau">
+      <thead>
+        <tr><th>Étudiant</th><th>Étude</th><th>Sommeil</th><th>Présence</th><th>Note préc.</th><th>Probabilité de réussir</th><th>Prédiction</th></tr>
+      </thead>
+      <tbody>
+        {% for r in resultats %}
+        <tr>
+          <td><strong>{{ r.id }}</strong></td>
+          <td>{{ r.valeurs.heures_etude|fr }} h</td>
+          <td>{{ r.valeurs.heures_sommeil|fr }} h</td>
+          <td>{{ r.valeurs.taux_presence|fr }} %</td>
+          <td>{{ r.valeurs.note_precedente|fr }}</td>
+          <td>
+            <div class="barre"><div class="barre__remplie barre--{{ r.classe }}" style="width: {{ r.probabilite }}%"></div></div>
+            <span class="barre__texte">{{ r.probabilite|fr }} %</span>
+          </td>
+          <td><span class="badge badge--{{ r.classe }}">{{ r.niveau }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <script id="donnees-lot" type="application/json">{{ resultats|tojson }}</script>
+</section>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% endblock %}

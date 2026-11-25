@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block titre %}Le modèle{% endblock %}
+{% block contenu %}
+<section class="hero hero--simple">
+  <div>
+    <p class="surtitre">Sous le capot</p>
+    <h1>Le réseau de neurones</h1>
+    <p class="hero__texte">Le même réseau que dans le TP, écrit avec NumPy. Il est entraîné au démarrage de l'application sur 80&nbsp;% des données, puis évalué sur les 20&nbsp;% restants.</p>
+  </div>
+</section>
+
+<div class="grille-2">
+  <!-- Architecture -->
+  <section class="carte">
+    <h2>Architecture</h2>
+    <svg viewBox="0 0 460 300" class="schema-reseau" role="img" aria-label="Réseau 4 entrées, 8 neurones cachés, 1 sortie">
+      {% for l in schema.liens %}<line x1="{{ l[0] }}" y1="{{ l[1] }}" x2="{{ l[2] }}" y2="{{ l[3] }}" class="schema-reseau__lien"/>{% endfor %}
+      {% for couche in schema.couches %}{% set i = loop.index0 %}
+        {% for n in couche %}
+          <circle cx="{{ n[0] }}" cy="{{ n[1] }}" r="11" class="schema-reseau__noeud schema-reseau__noeud--{{ i }}"/>
+          {% if i == 0 %}<text x="{{ n[0] - 20 }}" y="{{ n[1] + 4 }}" text-anchor="end" class="schema-reseau__texte">{{ schema.noms[loop.index0] }}</text>{% endif %}
+        {% endfor %}
+      {% endfor %}
+      <text x="400" y="170" text-anchor="middle" class="schema-reseau__texte schema-reseau__texte--fort">P(réussite)</text>
+      <text x="130" y="292" text-anchor="middle" class="schema-reseau__titre">Entrée</text>
+      <text x="270" y="292" text-anchor="middle" class="schema-reseau__titre">Cachée · ReLU</text>
+      <text x="400" y="292" text-anchor="middle" class="schema-reseau__titre">Sortie · sigmoïde</text>
+    </svg>
+    <ul class="fiches">
+      <li><strong>{{ architecture.parametres }}</strong><span>paramètres (poids + biais)</span></li>
+      <li><strong>{{ architecture.epoques }}</strong><span>époques d'entraînement</span></li>
+      <li><strong>{{ architecture.taux|string|replace('.', ',') }}</strong><span>taux d'apprentissage</span></li>
+    </ul>
+  </section>
+
+  <!-- Performance -->
+  <section class="carte">
+    <h2>Performance sur le test</h2>
+    <div class="precision-grande">
+      <strong>{{ '%.1f'|format(metriques.precision * 100)|replace('.', ',') }}&nbsp;%</strong>
+      <span>de bonnes réponses sur {{ metriques.n_test }} étudiants jamais vus pendant l'entraînement</span>
+    </div>
+    <h3>Matrice de confusion</h3>
+    <div class="matrice">
+      <span></span><span class="matrice__titre">Prédit : échec</span><span class="matrice__titre">Prédit : réussite</span>
+      <span class="matrice__titre matrice__titre--ligne">Réel : échec</span>
+      <div class="matrice__case matrice__case--ok"><strong>{{ metriques.vn }}</strong>{{ 'vrai négatif' if metriques.vn <= 1 else 'vrais négatifs' }}</div>
+      <div class="matrice__case matrice__case--erreur"><strong>{{ metriques.fp }}</strong>{{ 'faux positif' if metriques.fp <= 1 else 'faux positifs' }}</div>
+      <span class="matrice__titre matrice__titre--ligne">Réel : réussite</span>
+      <div class="matrice__case matrice__case--erreur"><strong>{{ metriques.fn }}</strong>{{ 'faux négatif' if metriques.fn <= 1 else 'faux négatifs' }}</div>
+      <div class="matrice__case matrice__case--ok"><strong>{{ metriques.vp }}</strong>{{ 'vrai positif' if metriques.vp <= 1 else 'vrais positifs' }}</div>
+    </div>
+  </section>
+</div>
+
+<section class="carte">
+  <h2>Courbe d'apprentissage</h2>
+  <p class="aide">La perte (entropie croisée) mesure l'erreur du réseau. Elle doit descendre pendant l'entraînement. Si la perte de test remontait, ce serait du surapprentissage.</p>
+  <div class="graphique">
+    <svg viewBox="-50 -10 {{ courbes.largeur + 70 }} {{ courbes.hauteur + 55 }}" role="img" aria-label="Évolution de la perte d'entraînement et de test">
+      {% for g in courbes.graduations_y %}
+        <line x1="0" x2="{{ courbes.largeur }}" y1="{{ g.y }}" y2="{{ g.y }}" class="graphique__grille"/>
+        <text x="-10" y="{{ g.y + 4 }}" text-anchor="end" class="graphique__texte">{{ g.texte }}</text>
+      {% endfor %}
+      {% for g in courbes.graduations_x %}
+        <text x="{{ g.x }}" y="{{ courbes.hauteur + 20 }}" text-anchor="middle" class="graphique__texte">{{ g.texte }}</text>
+      {% endfor %}
+      <text x="{{ courbes.largeur / 2 }}" y="{{ courbes.hauteur + 42 }}" text-anchor="middle" class="graphique__texte">Époque</text>
+      <polyline points="{{ courbes.train }}" class="graphique__ligne graphique__ligne--train"/>
+      <polyline points="{{ courbes.test }}" class="graphique__ligne graphique__ligne--test"/>
+    </svg>
+    <div class="legende">
+      <span><i class="legende__train"></i>Perte d'entraînement ({{ '%.2f'|format(metriques.perte_finale_train)|replace('.', ',') }} à la fin)</span>
+      <span><i class="legende__test"></i>Perte de test ({{ '%.2f'|format(metriques.perte_finale_test)|replace('.', ',') }} à la fin)</span>
+    </div>
+  </div>
+</section>
+
+<section class="carte">
+  <h2>Comment le réseau a appris</h2>
+  <ol class="etapes">
+    <li><strong>Normalisation</strong><span>Chaque colonne est ramenée à une moyenne de 0 et un écart-type de 1, calculés sur l'entraînement.</span></li>
+    <li><strong>Propagation avant</strong><span>Les données traversent le réseau et donnent une probabilité de réussite.</span></li>
+    <li><strong>Calcul de la perte</strong><span>L'entropie croisée mesure l'écart avec les vraies réponses.</span></li>
+    <li><strong>Rétropropagation</strong><span>On calcule le gradient de chaque poids, de la sortie vers l'entrée, puis on les corrige d'un petit pas.</span></li>
+  </ol>
+</section>
+{% endblock %}
